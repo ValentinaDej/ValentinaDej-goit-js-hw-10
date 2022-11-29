@@ -1,7 +1,6 @@
 import './css/styles.css';
-import { CounrtyApiService } from './JS/fetchCountries';
+import { fetchCountries } from './JS/fetchCountries';
 import debounce from 'lodash.debounce';
-
 import Notiflix from 'notiflix';
 import 'notiflix/dist/notiflix-3.2.5.min.css';
 
@@ -10,13 +9,11 @@ Notiflix.Notify.init({
 });
 
 const DEBOUNCE_DELAY = 300;
-
 const refs = {
   searchField: document.querySelector('#search-box'),
   countryListEl: document.querySelector('.country-list'),
   countryInfoEl: document.querySelector('.country-info'),
 };
-const counrtyApiService = new CounrtyApiService();
 
 refs.searchField.addEventListener(
   'input',
@@ -25,23 +22,17 @@ refs.searchField.addEventListener(
 
 function OnSearchBoxInput(event) {
   event.preventDefault();
-  counrtyApiService.query = refs.searchField.value.trim();
-
-  if (counrtyApiService.query === '') {
-    return;
-  }
-
   clearCountryMarkup();
+  const searchField = refs.searchField.value.trim();
+  if (!searchField) return;
 
-  counrtyApiService
-    .fetchCountries()
+  fetchCountries(searchField)
     .then(countries => {
-      let searchQueryQuantity = countries.length;
-      if (searchQueryQuantity > 10) {
+      if (countries.length > 10) {
         Notiflix.Notify.info(
           `Too many matches found. Please enter a more specific name.`
         );
-      } else if (searchQueryQuantity <= 10 && searchQueryQuantity >= 2) {
+      } else if (countries.length >= 2) {
         appendCountriesMarkup(countries);
       } else {
         appendCountryMarkup(countries);
@@ -53,31 +44,52 @@ function OnSearchBoxInput(event) {
 }
 
 function appendCountriesMarkup(countries) {
+  clearCountryMarkup();
   const markup = countries
     .map(country => {
+      const {
+        flags: { svg },
+        name: { common: commonName },
+      } = country;
+
       return `
-          <li>
-          <img src='${country.flags.svg}' alt='flag of ${country.name}' width='200px'>
-            <p>${country.name}</p>
+          <li class ='country-list-element'>
+          <img src='${svg}' alt='flag of ${commonName}' width='50' height='25'>
+            <p>${commonName}</p>
           </li>
       `;
     })
     .join('');
-  refs.countryListEl.insertAdjacentHTML('beforeend', markup);
+  refs.countryListEl.innerHTML = markup;
 }
 
 function appendCountryMarkup(countries) {
+  clearCountryMarkup();
   const markup = countries
     .map(country => {
+      const {
+        capital,
+        population,
+        name: { common: commonName },
+        flags: { svg },
+        languages,
+      } = country;
+
+      const valuesLanguages = Object.values(languages).join(', ');
+
       return `
-            <p>${country.name}</p>
+           <h2 class ='country-list-element'><img src='${svg}' alt='flag of ${commonName}' width='50' height='25'>
+            <p>${commonName}</p></h2>
+            <p><strong>Capital:</strong> ${capital}</p>
+            <p><strong>Population:</strong> ${population}</>
+            <p><strong>Languages:</strong> ${valuesLanguages}</>
       `;
     })
     .join('');
-  refs.countryInfoEl.insertAdjacentHTML('beforeend', markup);
+  refs.countryInfoEl.innerHTML = markup;
 }
 
 function clearCountryMarkup() {
-  refs.countryInfoEl.innerHTML = '';
   refs.countryListEl.innerHTML = '';
+  refs.countryInfoEl.innerHTML = '';
 }
